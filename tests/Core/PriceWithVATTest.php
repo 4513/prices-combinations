@@ -9,7 +9,6 @@ use MiBo\Prices\PriceWithVAT;
 use MiBo\Prices\Units\Price\Currency;
 use MiBo\Properties\Calculators\UnitConvertor;
 use MiBo\VAT\Resolvers\ProxyResolver;
-use MiBo\VAT\VAT;
 use PHPUnit\Framework\TestCase;
 
 /**

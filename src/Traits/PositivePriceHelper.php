@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace MiBo\Prices\Traits;
 
 use MiBo\Prices\Exceptions\NegativePriceException;
-use function PHPStan\dumpType;
 
 /**
  * Trait PositivePriceHelper
