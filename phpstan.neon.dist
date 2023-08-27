@@ -3,4 +3,4 @@ parameters:
     paths:
         - src
     ignoreErrors:
-        - "#Call to an undefined method [a-zA-Z\\\\ ]+::getMinorUnitRate.*#"
+#        - "#Call to an undefined method [a-zA-Z\\\\ ]+::getMinorUnitRate.*#"

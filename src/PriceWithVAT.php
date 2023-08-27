@@ -40,7 +40,12 @@ class PriceWithVAT extends Price
         $vatAmount       = clone $value;
         $this->vatAmount = $vatAmount;
 
-        $this->vatAmount->divide(100 + $vatPercentage, -2);
+        if ($vatPercentage === 0) {
+            $this->vatAmount->multiply(0);
+        } else {
+            $this->vatAmount->multiply($vatPercentage * 100)->divide(100 + ($vatPercentage * 100));
+        }
+
         $value->subtract($vatAmount);
 
         $this->initialVATAmount = clone $this->vatAmount;
@@ -74,16 +79,18 @@ class PriceWithVAT extends Price
             $price = self::createFromPrice($price);
         }
 
-        $this->vatAmount->add($price->getValueOfVAT());
+        $this->vatAmount->add($price->getValueOfVAT(), $price->getUnit()->getMinorUnitRate() ?? 0);
+
         parent::setNestedPrice($category, $price);
     }
 
     /**
      * @inheritDoc
      */
-    public function multiply(NumericalProperty|float|int $value): static
+    public function multiply(NumericalProperty|float|int $value): NumericalProperty
     {
         $this->initialVATAmount->multiply($value instanceof NumericalProperty ? $value->getNumericalValue() : $value);
+        $this->vatAmount->multiply($value instanceof NumericalProperty ? $value->getNumericalValue() : $value);
 
         return parent::multiply($value);
     }
@@ -91,18 +98,12 @@ class PriceWithVAT extends Price
     /**
      * @inheritDoc
      */
-    protected function compute(): void
-    {
-        $this->vatAmount->multiply(0)->add($this->initialVATAmount);
-        parent::compute();
-    }
-
-    /**
-     * @inheritDoc
-     */
     public function getValueOfVAT(): int|float
     {
-        return $this->vatAmount->getValue();
+        return $this->vatAmount->getValue(
+            $this->getUnit()->getMinorUnitRate() ?? 0,
+            $this->getUnit()->getMinorUnitRate() ?? 0
+        );
     }
 
     /**

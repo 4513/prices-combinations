@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace MiBo\Prices\Traits;
 
 use MiBo\Prices\Exceptions\NegativePriceException;
+use function PHPStan\dumpType;
 
 /**
  * Trait PositivePriceHelper
@@ -36,8 +37,9 @@ trait PositivePriceHelper
         foreach ($groupedByRate as $rate => $prices) {
             $sum = 0;
 
+            /** @var \MiBo\Prices\Contracts\PriceInterface $price */
             foreach ($prices as $price) {
-                $sum += $price->getValue();
+                $sum += $price->getNumericalValue()->getValue();
             }
 
             if ($sum < 0) {
@@ -47,6 +49,7 @@ trait PositivePriceHelper
 
         if (!empty($errors)) {
             $message = strtr(
+                // @phpcs:ignore Generic.Strings.UnnecessaryStringConcat.Found
                 "The price is invalid!\n" .
                 "The sum of prices with VAT rates :rates are defective. The sums of the VATs: :sums.",
                 [
