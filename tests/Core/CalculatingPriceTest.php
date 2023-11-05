@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace MiBo\Prices\Tests;
 
 use Closure;
+use MiBo\Prices\Calculators\PriceCalc;
 use MiBo\Prices\Price;
 use MiBo\Prices\PriceWithVAT;
 use MiBo\Prices\Units\Price\Currency;
 use MiBo\Properties\Calculators\UnitConvertor;
+use MiBo\VAT\Manager;
 use MiBo\VAT\Resolvers\ProxyResolver;
+use MiBo\VAT\VAT;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -54,9 +57,9 @@ class CalculatingPriceTest extends TestCase
     ): void
     {
         /** @var \MiBo\Prices\PriceWithVAT $initialPrice */
-        $initialPrice = $getInitialPrice();
+        $initialPrice = $getInitialPrice($this);
         /** @var \MiBo\Prices\Contracts\PriceInterface $addendPrice */
-        $addendPrice = $getAddendPrice();
+        $addendPrice = $getAddendPrice($this);
 
         $initialPrice->add($addendPrice);
 
@@ -95,18 +98,18 @@ class CalculatingPriceTest extends TestCase
                 0,
             ],
             'Prices with VAT (combined)'      => [
-                function() {
+                function($class) {
                     return new PriceWithVAT(
                         11,
                         Currency::get('EUR'),
-                        ProxyResolver::retrieveByCategory('07', 'SVK')
+                        $class->retrieveVATByCategory('07', 'SVK')
                     );
                 },
-                function() {
+                function($class) {
                     return new PriceWithVAT(
                         10,
                         Currency::get('EUR'),
-                        ProxyResolver::retrieveByCategory('0', 'SVK')
+                        $class->retrieveVATByCategory('0', 'SVK')
                     );
                 },
                 21,
@@ -114,18 +117,18 @@ class CalculatingPriceTest extends TestCase
                 1,
             ],
             'Prices with VAT (same)'          => [
-                function() {
+                function($class) {
                     return new PriceWithVAT(
                         11,
                         Currency::get('EUR'),
-                        ProxyResolver::retrieveByCategory('07', 'SVK')
+                        $class->retrieveVATByCategory('07', 'SVK')
                     );
                 },
-                function() {
+                function($class) {
                     return new PriceWithVAT(
                         11,
                         Currency::get('EUR'),
-                        ProxyResolver::retrieveByCategory('07', 'SVK')
+                        $class->retrieveVATByCategory('07', 'SVK')
                     );
                 },
                 22,
@@ -133,18 +136,18 @@ class CalculatingPriceTest extends TestCase
                 2,
             ],
             'Price without VAT (same)'        => [
-                function() {
+                function($class) {
                     return new PriceWithVAT(
                         11,
                         Currency::get('EUR'),
-                        ProxyResolver::retrieveByCategory('07', 'SVK')
+                        $class->retrieveVATByCategory('07', 'SVK')
                     );
                 },
-                function() {
+                function($class) {
                     return new Price(
                         10,
                         Currency::get('EUR'),
-                        ProxyResolver::retrieveByCategory('07', 'SVK')
+                        $class->retrieveVATByCategory('07', 'SVK')
                     );
                 },
                 22,
@@ -152,18 +155,18 @@ class CalculatingPriceTest extends TestCase
                 2,
             ],
             'Price without VAT (combined)'    => [
-                function() {
+                function($class) {
                     return new PriceWithVAT(
                         11,
                         Currency::get('EUR'),
-                        ProxyResolver::retrieveByCategory('07', 'SVK')
+                        $class->retrieveVATByCategory('07', 'SVK')
                     );
                 },
-                function() {
+                function($class) {
                     return new Price(
                         10,
                         Currency::get('EUR'),
-                        ProxyResolver::retrieveByCategory('0', 'SVK')
+                        $class->retrieveVATByCategory('0', 'SVK')
                     );
                 },
                 21,
@@ -171,18 +174,18 @@ class CalculatingPriceTest extends TestCase
                 1,
             ],
             'Price without VAT (combined) #2' => [
-                function() {
+                function($class) {
                     return new PriceWithVAT(
                         11,
                         Currency::get('EUR'),
-                        ProxyResolver::retrieveByCategory('0', 'SVK')
+                        $class->retrieveVATByCategory('0', 'SVK')
                     );
                 },
-                function() {
+                function($class) {
                     return new Price(
                         10,
                         Currency::get('EUR'),
-                        ProxyResolver::retrieveByCategory('07', 'SVK')
+                        $class->retrieveVATByCategory('07', 'SVK')
                     );
                 },
                 22,
@@ -199,7 +202,9 @@ class CalculatingPriceTest extends TestCase
     {
         parent::setUp();
 
-        ProxyResolver::setResolver(VATResolver::class);
+        $vatHelper = new VATResolver();
+
+        PriceCalc::setVATManager(new Manager($vatHelper, $vatHelper, $vatHelper));
 
         // Setting conversion rate between CZK and EUR => 1 EUR = 25 CZK
         UnitConvertor::$unitConvertors[\MiBo\Prices\Quantities\Price::class] = function(Price $price, Currency $unit) {
@@ -211,5 +216,10 @@ class CalculatingPriceTest extends TestCase
 
             return $price->getNumericalValue()->divide(25);
         };
+    }
+
+    protected function retrieveVATByCategory(string $category, string $country): VAT
+    {
+        return PriceCalc::getVATManager()->retrieveVAT(new TestingClassification($category), $country);
     }
 }

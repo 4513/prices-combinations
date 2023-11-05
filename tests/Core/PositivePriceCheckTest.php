@@ -4,13 +4,15 @@ declare(strict_types=1);
 
 namespace MiBo\Prices\Tests;
 
+use MiBo\Prices\Calculators\PriceCalc;
 use MiBo\Prices\Exceptions\NegativePriceException;
 use MiBo\Prices\PositivePrice;
 use MiBo\Prices\PositivePriceWithVAT;
 use MiBo\Prices\Price;
 use MiBo\Prices\Units\Price\Currency;
 use MiBo\Properties\Calculators\UnitConvertor;
-use MiBo\VAT\Resolvers\ProxyResolver;
+use MiBo\VAT\Manager;
+use MiBo\VAT\VAT;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -91,7 +93,9 @@ class PositivePriceCheckTest extends TestCase
     {
         parent::setUp();
 
-        ProxyResolver::setResolver(VATResolver::class);
+        $vatHelper = new VATResolver();
+
+        PriceCalc::setVATManager(new Manager($vatHelper, $vatHelper, $vatHelper));
 
         // Setting conversion rate between CZK and EUR => 1 EUR = 25 CZK
         UnitConvertor::$unitConvertors[\MiBo\Prices\Quantities\Price::class] = function(Price $price, Currency $unit) {
@@ -103,6 +107,11 @@ class PositivePriceCheckTest extends TestCase
 
             return $price->getNumericalValue()->divide(25);
         };
+    }
+
+    protected function retrieveVATByCategory(string $category, string $country): VAT
+    {
+        return PriceCalc::getVATManager()->retrieveVAT(new TestingClassification($category), $country);
     }
 
     public static function provideDataToNegativeResult(): array

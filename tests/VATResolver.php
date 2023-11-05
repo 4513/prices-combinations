@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace MiBo\Prices\Tests;
 
 use DateTime;
+use DateTimeInterface;
+use MiBo\Taxonomy\Contracts\ProductTaxonomy;
 use MiBo\VAT\Contracts\Convertor;
-use MiBo\VAT\Contracts\Resolver;
+use MiBo\VAT\Contracts\ValueResolver;
 use MiBo\VAT\Enums\VATRate;
 use MiBo\VAT\VAT;
+use Stringable;
 
 /**
  * Class VATResolver
@@ -21,23 +24,47 @@ use MiBo\VAT\VAT;
  *
  * @no-named-arguments Parameter names are not covered by the backward compatibility promise.
  */
-class VATResolver implements Resolver, Convertor
+class VATResolver implements \MiBo\VAT\Contracts\VATResolver, Convertor, ValueResolver
 {
+    public function convert(VAT $vat, ?string $countryCode = null, ?DateTimeInterface $date = null): VAT
+    {
+        return self::convertForCountry($vat, $countryCode ?? $vat->getCountryCode());
+    }
+
+    public function retrieveVAT(
+        ProductTaxonomy $classification,
+        Stringable|string $countryCode,
+        ?DateTimeInterface $date
+    ): VAT
+    {
+        return self::retrieveByCategory($classification->getCode(), (string) $countryCode);
+    }
+
+    public function getValueOfVAT(VAT $vat): float|int
+    {
+        return self::getPercentageOf($vat);
+    }
+
     public static function convertForCountry(VAT $vat, string $countryCode): VAT
     {
-        return self::retrieveByCategory($vat->getCategory() ?? "", $countryCode);
+        return self::retrieveByCategory($vat->getClassification()->getCode(), $countryCode);
     }
 
     public static function retrieveByCategory(string $category, string $countryCode): VAT
     {
         if (empty(self::getVATs()[$countryCode][$category])) {
-            return VAT::get($countryCode, VATRate::STANDARD, $category);
+            return VAT::get($countryCode, VATRate::STANDARD, new TestingClassification($category), new DateTime());
         }
 
-        return VAT::get($countryCode, self::getVATs()[$countryCode][$category], $category);
+        return VAT::get(
+            $countryCode,
+            self::getVATs()[$countryCode][$category],
+            new TestingClassification($category),
+            new DateTime()
+        );
     }
 
-    public static function getPercentageOf(VAT $vat, ?DateTime $time = null): float|int
+    public static function getPercentageOf(VAT $vat): float|int
     {
         return self::getPercentages()[$vat->getCountryCode()][$vat->getRate()->name] ?? 0;
     }

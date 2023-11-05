@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace MiBo\Prices\Tests;
 
+use MiBo\Prices\Calculators\PriceCalc;
 use MiBo\Prices\Price;
 use MiBo\Prices\PriceWithVAT;
 use MiBo\Prices\Units\Price\Currency;
 use MiBo\Properties\Calculators\UnitConvertor;
-use MiBo\VAT\Resolvers\ProxyResolver;
+use MiBo\VAT\Manager;
+use MiBo\VAT\VAT;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -50,7 +52,7 @@ class PriceWithVATTest extends TestCase
      * @covers ::getValueOfVAT
      *
      * @param int|float $initialValue
-     * @param \MiBo\VAT\VAT $vatToUse
+     * @param array{0: string, 1: \MiBo\VAT\VAT} $vatToUse
      * @param int|float $expectedValueWithVAT
      * @param int|float $expectedValue
      * @param int|float $expectedValueOfVAT
@@ -70,7 +72,7 @@ class PriceWithVATTest extends TestCase
         $price = new PriceWithVAT(
             $initialValue,
             Currency::get('EUR'),
-            ProxyResolver::retrieveByCategory($vatToUse[0], $vatToUse[1])
+            $this->retrieveVATByCategory($vatToUse[0], $vatToUse[1])
         );
 
         $this->assertSame(
@@ -152,7 +154,9 @@ class PriceWithVATTest extends TestCase
     {
         parent::setUp();
 
-        ProxyResolver::setResolver(VATResolver::class);
+        $vatHelper = new VATResolver();
+
+        PriceCalc::setVATManager(new Manager($vatHelper, $vatHelper, $vatHelper));
 
         // Setting conversion rate between CZK and EUR => 1 EUR = 25 CZK
         UnitConvertor::$unitConvertors[\MiBo\Prices\Quantities\Price::class] = function(Price $price, Currency $unit) {
@@ -164,5 +168,10 @@ class PriceWithVATTest extends TestCase
 
             return $price->getNumericalValue()->divide(25);
         };
+    }
+
+    protected function retrieveVATByCategory(string $category, string $country): VAT
+    {
+        return PriceCalc::getVATManager()->retrieveVAT(new TestingClassification($category), $country);
     }
 }

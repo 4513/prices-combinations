@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace MiBo\Prices;
 
 use DateTime;
+use MiBo\Prices\Calculators\PriceCalc;
 use MiBo\Prices\Contracts\PriceInterface;
+use MiBo\Prices\Taxonomies\AnyTaxonomy;
 use MiBo\Properties\Contracts\NumericalProperty;
 use MiBo\Properties\Contracts\Unit;
 use MiBo\Properties\Value;
 use MiBo\VAT\Enums\VATRate;
-use MiBo\VAT\Resolvers\ProxyResolver;
 use MiBo\VAT\VAT;
 
 /**
@@ -32,11 +33,10 @@ class PriceWithVAT extends Price
 
     public function __construct(float|Value|int $value, Unit $unit, ?VAT $vat = null, ?DateTime $time = null)
     {
-        $value           = $value instanceof Value ?
-            $value :
-            new Value($value, $unit->getMinorUnitRate() ?? 0, 0);
-        $vat           ??= VAT::get("", VATRate::NONE);
-        $vatPercentage   = ProxyResolver::getPercentageOf($vat, $time);
+        $time          ??= new DateTime();
+        $value           = $value instanceof Value ? $value : new Value($value, $unit->getMinorUnitRate() ?? 0, 0);
+        $vat           ??= VAT::get('', VATRate::ANY, AnyTaxonomy::get(), $time);
+        $vatPercentage   = PriceCalc::getVATManager()->getValueOfVAT($vat);
         $vatAmount       = clone $value;
         $this->vatAmount = $vatAmount;
 
