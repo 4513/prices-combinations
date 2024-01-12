@@ -5,7 +5,7 @@ on:
     branches:
       - "**"
   pull_request:
-    branches: [ "master" ]
+    branches: [ "main" ]
 
 permissions:
   contents: read
@@ -27,4 +27,4 @@ jobs:
         run: composer update --prefer-dist --no-progress --prefer-lowest
 
       - name: PHPUnit
-        run: ./vendor/bin/phpunit
+        run: ./vendor/bin/phpunit --testsuite Full
